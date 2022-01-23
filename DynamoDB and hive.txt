@@ -1,0 +1,77 @@
+Usecase1:Export Data from DynamoDB to s3 using Hive
+----------------------------------------------------
+
+create database if not exists hellotesting;
+
+use hellotesting;
+
+
+CREATE External TABLE hvivedynamoconnector(
+    sentiment_title string,
+    publish_time string,
+title string,
+sentiment_content_partial string,
+content string,
+url string)
+STORED BY 'org.apache.hadoop.hive.dynamodb.DynamoDBStorageHandler'
+TBLPROPERTIES ("dynamodb.table.name" = "india_dataset",
+"dynamodb.column.mapping" = "sentiment_title:sentiment_title,publish_time:publish_time,title:title,sentiment_content_partial:sentiment_content_partial,content:content,url:url");
+
+
+select content from hellotesting.hvivedynamoconnector where sentiment_content_partial='NEGATIVE';
+
+
+
+CREATE External TABLE exporter(
+    sentiment_title string,
+    publish_time string,
+title string,
+sentiment_content_partial string,
+content string,
+url string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+Location 's3://dynamostorer/';
+
+
+
+insert into exporter select * from hvivedynamoconnector;
+
+
+
+Usecase2:Import Data in DynamoDB from s3 via Hive
+--------------------------------------------------
+
+s3 bucket:jsonloaderdemodynamo
+DynamoDB Table:	jsonloader (partition key -- guid)
+
+
+CREATE  EXTERNAL TABLE `jsonmigration` (
+  `guid` string,
+  `isActive` string,
+  `balance` string,
+  `age` int,
+  `first_name` string,
+  `last_name` string,
+  `company` string
+)
+ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe' LOCATION 's3://jsonloaderdemodynamo/';
+
+
+CREATE External TABLE datalaketodynamo1(
+      `guid` string,
+  `isActive` string,
+  `balance` string,
+  `age` DOUBLE,
+  `first_name` string,
+  `last_name` string,
+  `company` string)
+STORED BY 'org.apache.hadoop.hive.dynamodb.DynamoDBStorageHandler'
+TBLPROPERTIES ("dynamodb.table.name" = "jsonloader",
+"dynamodb.column.mapping" = "guid:guid,isActive:isActive,balance:balance,age:age,first_name:first_name,last_name:last_name,company:company");
+
+
+insert into table datalaketodynamo1 select * from jsonmigration;
+
+
+
+ 
